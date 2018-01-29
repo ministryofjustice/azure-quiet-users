@@ -39,7 +39,8 @@ def get_skiptoken(nextLink):
 
 def build_user(user):
     return {
-        'id': user['userPrincipalName'],
+        'id': user['objectId'],
+        'upn': user['userPrincipalName'],
         'name': user['displayName'],
         'enabled': user['accountEnabled']
     }
@@ -61,7 +62,8 @@ def all_users():
 
 def build_signin(signin):
     return {
-        'user_id': signin['userPrincipalName'],
+        'id': signin['userId'],
+        'upn': signin['userPrincipalName'],
         'when': datetime.utcfromtimestamp(signin['signinDateTimeInMillis'] / 1000)
     }
 
@@ -73,7 +75,7 @@ def signins_by_user():
         nonlocal oldest
         for signin in res["value"]:
             signin = build_signin(signin)
-            signins[signin['user_id']] = signin
+            signins[signin['id']] = signin
             oldest = min(oldest, signin['when'])
     while True:
         response = req("activities/signinEvents", params)
@@ -89,7 +91,11 @@ signins, oldest = signins_by_user()
 
 print("\n\n")
 print("Report of Users who haven't signed in since %s" % oldest)
+print("=" * 40)
+for user in users:
+    if user['id'] not in signins and not user['enabled']:
+        print("%s (disabled)" % user['upn'])
 print("-" * 40)
 for user in users:
-    if user['id'] not in signins:
-        print(user['id'] + (" (disabled)" if not user['enabled'] else ""))
+    if user['id'] not in signins and user['enabled']:
+        print(user['upn'])
